@@ -133,7 +133,7 @@
             background: #1c71b3;
         }
     </style>
-    <!-- Подключаем библиотеку Supabase через CDN -->
+    <!-- ПОДКЛЮЧАЕМ СТАБИЛЬНУЮ БИБЛИОТЕКУ SUPABASE -->
     <script src="https://jsdelivr.net"></script>
 </head>
 <body>
@@ -153,14 +153,14 @@
     </div>
 
     <script>
-        // НАСТРОЙКИ ВАШЕГО СЕРВЕРА SUPABASE
-        const SUPABASE_URL = "https://kbhjuliwskwfuboogcxr.supabase.co/rest/v1/"; 
+        // НАСТРОЙКИ СЕРВЕРА
+        const SUPABASE_URL = "https://supabase.co"; 
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtiaGp1bGl3c2t3ZnVib29nY3hyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDA2NjEsImV4cCI6MjEwMjYxNjY2MX0.icHSaaVztXBPom3viJQp0w38AlqO1uYZ2ok2nWPYmoQ";
 
-        // Инициализация клиента Supabase
+        // Инициализация клиента
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Работа с никнеймом
+        // Создание или загрузка никнейма
         let myUsername = localStorage.getItem('chat_username');
         if (!myUsername) {
             myUsername = prompt("Добро пожаловать в NeoGram! Введите ваш никнейм:");
@@ -177,9 +177,7 @@
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
 
-        // Функция отрисовки одного сообщения на экране
         function appendMessage(msg) {
-            // Проверяем, нет ли уже такого сообщения на экране (по id)
             if (document.getElementById(`msg-${msg.id}`)) return;
 
             const msgDiv = document.createElement('div');
@@ -205,20 +203,24 @@
             messagesBox.scrollTop = messagesBox.scrollHeight;
         }
 
-        // 1. Загрузка старых сообщений при открытии сайта
+        // 1. Загрузка старых сообщений
         async function loadExistingMessages() {
-            const { data, error } = await supabaseClient
-                .from('messages')
-                .select('*')
-                .order('created_at', { ascending: true });
+            try {
+                const { data, error } = await supabaseClient
+                    .from('messages')
+                    .select('*')
+                    .order('created_at', { ascending: true });
 
-            if (data) {
-                data.forEach(msg => appendMessage(msg));
+                if (data) {
+                    data.forEach(msg => appendMessage(msg));
+                }
+            } catch (err) {
+                console.error("Ошибка сети:", err);
             }
         }
         loadExistingMessages();
 
-        // 2. Отправка нового сообщения в базу данных
+        // 2. Отправка нового сообщения
         async function sendMessage() {
             const text = messageInput.value.trim();
             if (text === "") return;
@@ -229,7 +231,7 @@
                 .from('messages')
                 .insert([{ username: myUsername, text: text }]);
                 
-            if (error) console.error("Ошибка отправки:", error);
+            if (error) console.error("Ошибка при отправке:", error);
         }
 
         sendBtn.addEventListener('click', sendMessage);
@@ -237,7 +239,7 @@
             if (e.key === 'Enter') sendMessage();
         });
 
-        // 3. Подписка на новые сообщения в реальном времени (Realtime)
+        // 3. Подписка на Realtime поток
         supabaseClient
             .channel('public:messages')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
@@ -247,3 +249,4 @@
     </script>
 </body>
 </html>
+
