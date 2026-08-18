@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoGram Messenger</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #e7ebf0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* Главный контейнер чата */
+        .chat-container {
+            width: 100%;
+            max-width: 450px;
+            height: 100vh;
+            background: #f4f4f5;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        @media (min-width: 451px) {
+            .chat-container {
+                height: 90vh;
+                border-radius: 12px;
+                overflow: hidden;
+            }
+        }
+
+        /* Шапка в стиле Telegram */
+        .chat-header {
+            background: #2481cc;
+            color: white;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header h2 {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .chat-header span {
+            font-size: 13px;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+
+        /* Окно сообщений с оригинальным фоном TG */
+        .messages-box {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background-image: url('https://telegram.org');
+            background-size: cover;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* Стили сообщений */
+        .message {
+            max-width: 75%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 15px;
+            position: relative;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+
+        /* Чужое сообщение */
+        .message.incoming {
+            background: white;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            color: #000;
+        }
+
+        /* Мое сообщение */
+        .message.outgoing {
+            background: #eeffde;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+            color: #000;
+        }
+
+        .message .username {
+            font-size: 12px;
+            font-weight: bold;
+            color: #2481cc;
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        /* Поле ввода */
+        .input-area {
+            background: white;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #dfe1e5;
+            border-radius: 20px;
+            outline: none;
+            font-size: 15px;
+        }
+
+        .input-area button {
+            background: #2481cc;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .input-area button:hover {
+            background: #1c71b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2 id="chat-title">NeoGram Chat</h2>
+            <span id="user-status">Загрузка...</span>
+        </div>
+        
+        <div class="messages-box" id="messagesBox"></div>
+
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Написать сообщение..." autocomplete="off">
+            <button id="sendBtn">➔</button>
+        </div>
+    </div>
+
+    <!-- Подключаем Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://gstatic.com";
+        import { getDatabase, ref, push, onChildAdded } from "https://gstatic.com";
+
+        // КОНФИГУРАЦИЯ FIREBASE (Замените своими данными из консоли Firebase!)
+        const firebaseConfig = {
+            apiKey: "ВАШ_API_KEY",
+            authDomain: "ВАШ_://firebaseapp.com",
+            databaseURL: "https://ВАШ_://firebaseio.com",
+            projectId: "ВАШ_PROJECT",
+            storageBucket: "ВАШ_://appspot.com",
+            messagingSenderId: "ВАШ_ID",
+            appId: "ВАШ_APP_ID"
+        };
+
+        // Инициализация
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const messagesRef = ref(db, 'messages');
+
+        // Запрос никнейма при входе
+        let myUsername = localStorage.getItem('chat_username');
+        if (!myUsername) {
+            myUsername = prompt("Добро пожаловать в NeoGram! Введите ваш никнейм:");
+            
+            // Если пользователь нажал отмену или ввёл пустоту
+            if (!myUsername || myUsername.trim() === "") {
+                myUsername = "User_" + Math.floor(Math.random() * 9000 + 1000);
+            } else {
+                myUsername = myUsername.trim();
+            }
+            localStorage.setItem('chat_username', myUsername);
+        }
+        document.getElementById('user-status').innerText = `@${myUsername}`;
+
+        const messagesBox = document.getElementById('messagesBox');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        // Функция отправки
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (text === "") return;
+
+            push(messagesRef, {
+                username: myUsername,
+                text: text,
+                timestamp: Date.now()
+            });
+
+            messageInput.value = "";
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Получение сообщений
+        onChildAdded(messagesRef, (data) => {
+            const msg = data.val();
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message');
+            
+            if (msg.username === myUsername) {
+                msgDiv.classList.add('outgoing');
+            } else {
+                msgDiv.classList.add('incoming');
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.classList.add('username');
+                nameSpan.innerText = `@${msg.username}`;
+                msgDiv.appendChild(nameSpan);
+            }
+
+            const textSpan = document.createElement('span');
+            textSpan.innerText = msg.text;
+            msgDiv.appendChild(textSpan);
+
+            messagesBox.appendChild(msgDiv);
+            messagesBox.scrollTop = messagesBox.scrollHeight;
+        });
+    </script>
+</body>
+</html>
+
