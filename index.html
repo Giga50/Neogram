@@ -20,7 +20,6 @@
             height: 100vh;
         }
 
-        /* Главный контейнер чата */
         .chat-container {
             width: 100%;
             max-width: 450px;
@@ -39,7 +38,6 @@
             }
         }
 
-        /* Шапка в стиле Telegram */
         .chat-header {
             background: #2481cc;
             color: white;
@@ -59,7 +57,6 @@
             margin-top: 2px;
         }
 
-        /* Окно сообщений с оригинальным фоном TG */
         .messages-box {
             flex: 1;
             padding: 15px;
@@ -71,7 +68,6 @@
             gap: 8px;
         }
 
-        /* Стили сообщений */
         .message {
             max-width: 75%;
             padding: 8px 12px;
@@ -82,7 +78,6 @@
             line-height: 1.4;
         }
 
-        /* Чужое сообщение */
         .message.incoming {
             background: white;
             align-self: flex-start;
@@ -90,7 +85,6 @@
             color: #000;
         }
 
-        /* Мое сообщение */
         .message.outgoing {
             background: #eeffde;
             align-self: flex-end;
@@ -106,7 +100,6 @@
             display: block;
         }
 
-        /* Поле ввода */
         .input-area {
             background: white;
             padding: 10px;
@@ -140,6 +133,8 @@
             background: #1c71b3;
         }
     </style>
+    <!-- Подключаем библиотеку Supabase через CDN -->
+    <script src="https://jsdelivr.net"></script>
 </head>
 <body>
 
@@ -157,33 +152,18 @@
         </div>
     </div>
 
-    <!-- Подключаем Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://gstatic.com";
-        import { getDatabase, ref, push, onChildAdded } from "https://gstatic.com";
+    <script>
+        // НАСТРОЙКИ ВАШЕГО СЕРВЕРА SUPABASE
+        const SUPABASE_URL = "https://kbhjuliwskwfuboogcxr.supabase.co"; 
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtiaGp1bGl3c2t3ZnVib29nY3hyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDA2NjEsImV4cCI6MjEwMjYxNjY2MX0.icHSaaVztXBPom3viJQp0w38AlqO1uYZ2ok2nWPYmoQ";
 
-        // КОНФИГУРАЦИЯ FIREBASE (Замените своими данными из консоли Firebase!)
-        const firebaseConfig = {
-            apiKey: "ВАШ_API_KEY",
-            authDomain: "ВАШ_://firebaseapp.com",
-            databaseURL: "https://ВАШ_://firebaseio.com",
-            projectId: "ВАШ_PROJECT",
-            storageBucket: "ВАШ_://appspot.com",
-            messagingSenderId: "ВАШ_ID",
-            appId: "ВАШ_APP_ID"
-        };
+        // Инициализация клиента Supabase
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Инициализация
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const messagesRef = ref(db, 'messages');
-
-        // Запрос никнейма при входе
+        // Работа с никнеймом
         let myUsername = localStorage.getItem('chat_username');
         if (!myUsername) {
             myUsername = prompt("Добро пожаловать в NeoGram! Введите ваш никнейм:");
-            
-            // Если пользователь нажал отмену или ввёл пустоту
             if (!myUsername || myUsername.trim() === "") {
                 myUsername = "User_" + Math.floor(Math.random() * 9000 + 1000);
             } else {
@@ -197,29 +177,13 @@
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
 
-        // Функция отправки
-        function sendMessage() {
-            const text = messageInput.value.trim();
-            if (text === "") return;
+        // Функция отрисовки одного сообщения на экране
+        function appendMessage(msg) {
+            // Проверяем, нет ли уже такого сообщения на экране (по id)
+            if (document.getElementById(`msg-${msg.id}`)) return;
 
-            push(messagesRef, {
-                username: myUsername,
-                text: text,
-                timestamp: Date.now()
-            });
-
-            messageInput.value = "";
-        }
-
-        sendBtn.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-
-        // Получение сообщений
-        onChildAdded(messagesRef, (data) => {
-            const msg = data.val();
             const msgDiv = document.createElement('div');
+            msgDiv.id = `msg-${msg.id}`;
             msgDiv.classList.add('message');
             
             if (msg.username === myUsername) {
@@ -239,8 +203,47 @@
 
             messagesBox.appendChild(msgDiv);
             messagesBox.scrollTop = messagesBox.scrollHeight;
+        }
+
+        // 1. Загрузка старых сообщений при открытии сайта
+        async function loadExistingMessages() {
+            const { data, error } = await supabaseClient
+                .from('messages')
+                .select('*')
+                .order('created_at', { ascending: true });
+
+            if (data) {
+                data.forEach(msg => appendMessage(msg));
+            }
+        }
+        loadExistingMessages();
+
+        // 2. Отправка нового сообщения в базу данных
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (text === "") return;
+
+            messageInput.value = "";
+
+            const { error } = await supabaseClient
+                .from('messages')
+                .insert([{ username: myUsername, text: text }]);
+                
+            if (error) console.error("Ошибка отправки:", error);
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
         });
+
+        // 3. Подписка на новые сообщения в реальном времени (Realtime)
+        supabaseClient
+            .channel('public:messages')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                appendMessage(payload.new);
+            })
+            .subscribe();
     </script>
 </body>
 </html>
-
