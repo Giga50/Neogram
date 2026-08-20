@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Вход NeoGram</title>
+</head>
+<body>
+
+<h2>Вход NeoGram</h2>
+
+<input id="username" placeholder="Username"><br>
+<input id="password" type="password" placeholder="Пароль"><br>
+
+<button id="loginBtn">Войти</button>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="app.js"></script>
+
+<script>
+document.getElementById("loginBtn").onclick = login;
+</script>
+
+</body>
+</html>
