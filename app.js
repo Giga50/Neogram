@@ -1,28 +1,50 @@
 const client = supabase.createClient(
-  "https://kbhjuliwskwfuboogcxr.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtiaGp1bGl3c2t3ZnVib29nY3hyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNDA2NjEsImV4cCI6MjEwMjYxNjY2MX0.icHSaaVztXBPom3viJQp0w38AlqO1uYZ2ok2nWPYmoQ"
+"https://kbhjuliwskwfuboogcxr.supabase.co",
+"ТВОЙ_ANON_KEY"
 );
+
 
 async function register(){
 
-let username=document.getElementById("username").value;
-let email=document.getElementById("email").value;
-let password=document.getElementById("password").value;
+let username = document.getElementById("username").value;
+let email = document.getElementById("email").value;
+let password = document.getElementById("password").value;
 
-let {data,error}=await client.auth.signUp({
- email,
- password
+
+let {data,error} = await client.auth.signUp({
+    email: email,
+    password: password
 });
+
 
 if(error){
- alert(error.message);
- return;
+    alert(error.message);
+    console.log(error);
+    return;
 }
 
-await client.from("profiles").insert({
- id:data.user.id,
- username:username
+
+if(!data.user){
+    alert("Пользователь не создан");
+    return;
+}
+
+
+let {error:profileError}=await client
+.from("profiles")
+.insert({
+    id:data.user.id,
+    username:username
 });
 
-alert("Аккаунт создан");
+
+if(profileError){
+    alert(profileError.message);
+    console.log(profileError);
+    return;
+}
+
+
+alert("Аккаунт создан!");
+
 }
